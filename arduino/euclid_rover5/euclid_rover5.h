@@ -10,21 +10,24 @@ const uint8_t DirPin[4] = {5, 7, 9, 11};
 const uint8_t EncAPin[4] = {2, 3, 18, 19};
 const uint8_t EncBPin[4] = {22, 23, 24, 25};
 
-const unsigned long SensorUpdateTime = 20;
+const uint8_t SensorUpdateFrequency = 50; // Hertz 
+const uint32_t SensorUpdateTime = 1000 / SensorUpdateFrequency; // milliseconds
+
+const double Kp = 1.0;
+const double Ki = 0.0;
+const double Kd = 0.0;
 
 struct Encoder {
-  WheelState state;
-  int32_t count;
-  uint32_t time;
-  uint32_t dt;
-  float speed;
+  volatile WheelState state;
+  volatile int32_t count;
+  double dCount;
   uint8_t forward;
 };
 
 struct Motor {
   WheelState state;
-  float speed;
-  int16_t pwm;
+  double setpoint;
+  double pwm;
   uint8_t forward;
   uint8_t reverse;
 };
@@ -33,8 +36,10 @@ struct Motor {
 
 ros::NodeHandle nh;
 
-volatile Encoder encoder[4];
-volatile Motor motor[4];
+Encoder encoder[4];
+Motor motor[4];
+
+PID pid[4];
 
 bool gotMessage = false;
 bool isReady = false;
@@ -63,8 +68,8 @@ ros::Publisher mRightFrontDt("/rover5/right/front/dt", &dtMessage[RightFront]);
 void setLeft( const std_msgs::Int16& msg);
 void setRight( const std_msgs::Int16& msg);
 
-ros::Subscriber<std_msgs::Int16> sub("/rover5/left_motor", setLeft );
-ros::Subscriber<std_msgs::Int16> sub1("/rover5/right_motor", setRight );
+ros::Subscriber<std_msgs::Int16> sSetLeft("/rover5/left_motor", setLeft );
+ros::Subscriber<std_msgs::Int16> sSetRight("/rover5/right_motor", setRight );
 
 
 #endif

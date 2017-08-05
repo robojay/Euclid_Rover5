@@ -3,9 +3,8 @@
 #include <std_msgs/Int32.h>
 #include <std_msgs/Int16.h>
 #include <std_msgs/Bool.h>
+#include <PID_v1.h>
 #include "euclid_rover5.h"
-
-
 
 // Wrappers for encoder interrupt handler
 void leftRearInterrupt() {
@@ -26,11 +25,7 @@ void rightFrontInterrupt() {
 
 
 // Actual encoder interrupt handler
-void encoderHandler(uint8_t wheel) {
-  uint32_t now = micros();
-  encoder[wheel].dt = now - encoder[wheel].time;
-  encoder[wheel].time = now;
-      
+void encoderHandler(uint8_t wheel) {        
   if (digitalRead(EncBPin[wheel]) == encoder[wheel].forward) {
     encoder[wheel].count++;
     encoder[wheel].state = Forward;
@@ -98,13 +93,14 @@ void setup() {
     // initialize arrays
     encoder[i].state = Off;
     encoder[i].count = 0;
-    encoder[i].time = 0;
-    encoder[i].dt = 0;
-    encoder[i].speed = 0.0;  
+    encoder[i].dCount = 0.0;
 
     motor[i].state = Off ;
-    motor[i].speed = 0.0;
-    motor[i].pwm = 0;  
+    motor[i].setpoint = 0;
+    motor[i].pwm = 0.0;  
+
+    pid[i].Setup(&encoder[i].dCount, &motor[i].pwm, &motor[i].setpoint, Kp, Ki, Kd, DIRECT);
+  
   }
 
   //
@@ -131,20 +127,16 @@ void setup() {
   nh.initNode(); //Initialize the node (needed by ROS)
   setIsReady(false); //Initialize ready status to false
 
-  //Advertise the topic
+  //Advertise topics
   nh.advertise(mArduinoStatusPub);
   nh.advertise(mLeftRearCount);
   nh.advertise(mLeftFrontCount);
   nh.advertise(mRightRearCount);
   nh.advertise(mRightFrontCount);
-  nh.advertise(mLeftRearDt);
-  nh.advertise(mLeftFrontDt);
-  nh.advertise(mRightRearDt);
-  nh.advertise(mRightFrontDt);
 
-  //Subscribing to the different topics, defined above
-  nh.subscribe(sub);
-  nh.subscribe(sub1);
+  //Subscribe topics
+  nh.subscribe(sSetLeft);
+  nh.subscribe(sSetRight);
 
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
@@ -166,18 +158,12 @@ void registerArduino(bool amReady){
 void sendEncoders(){
     for (uint8_t i = 0; i < 4; i++) {
       countMessage[i].data = encoder[i].count;      
-      dtMessage[i].data = encoder[i].dt;
+      encoder[i].dCount = (double)encoder[i].count;
     }
     mLeftRearCount.publish(&countMessage[LeftRear]);
     mRightRearCount.publish(&countMessage[RightRear]);
     mLeftFrontCount.publish(&countMessage[LeftFront]);
     mRightFrontCount.publish(&countMessage[RightFront]);
-
-    mLeftRearDt.publish(&dtMessage[LeftRear]);
-    mLeftFrontDt.publish(&dtMessage[LeftFront]);
-    mRightRearDt.publish(&dtMessage[RightRear]);
-    mRightFrontDt.publish(&dtMessage[RightFront]);
-
 }
 
 
