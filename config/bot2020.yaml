@@ -1,9 +1,0 @@
-    twist_topic: "/cmd_vel_mux/input/teleop"
-    left_motor_topic: "/bot2020/left_motor"
-    right_motor_topic: "/bot2020/right_motor"
-    left_rpm_max: 73.0
-    right_rpm_max: 65.0
-    left_wheel_diameter_mm: 65.0
-    right_wheel_diameter_mm: 65.0
-    wheel_spacing_mm: 105.0
-    pwm_limit: 255

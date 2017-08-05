@@ -1,13 +1,10 @@
 <?xml version="1.0"?>
 <package>
-  <name>bot2020_pkg</name>
+  <name>euclid_rover5_pkg</name>
   <version>0.0.0</version>
-  <description>The bot2020_pkg package</description>
+  <description>The euclid_rover5_pkg package</description>
 
-  <!-- One maintainer tag required, multiple allowed, one person per tag -->
-  <!-- Example:  -->
-  <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
-  <maintainer email="reactive@todo.todo">reactive</maintainer>
+  <maintainer email="Jay@ReactiveTechnologies.com">Jay Francis</maintainer>
 
 
   <!-- One license tag required, multiple allowed, one license per tag -->

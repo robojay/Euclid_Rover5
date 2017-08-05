@@ -5,7 +5,7 @@
 
 using namespace std;
 
-class Bot2020 {
+class Rover5 {
 	ros::NodeHandle nh_;
 
 	ros::Subscriber robotTwist_;
@@ -24,13 +24,13 @@ class Bot2020 {
 	static const float PI = 3.1415927;
 
 public:
-	Bot2020(ros::NodeHandle &nh) {
+	Rover5(ros::NodeHandle &nh) {
 
 		nh_ = nh;
 
-		twistTopic_ = "/bot2020/cmd_vel";
-		leftMotorTopic_ = "/bot2020/left_motor";
-		rightMotorTopic_ = "/bot2020/right_motor";
+		twistTopic_ = "/rover5/cmd_vel";
+		leftMotorTopic_ = "/rover5/left_motor";
+		rightMotorTopic_ = "/rover5/right_motor";
 		leftRpmMax_ = 90.0;
 		rightRpmMax_ = 90.0;
 		leftWheelDiameterMm_ = 65.0;
@@ -60,7 +60,7 @@ public:
 		}
 
 		// Subscribe to bot2020 twist
-		robotTwist_ = nh_.subscribe(twistTopic_, 1, &Bot2020::twistCallback, this);
+		robotTwist_ = nh_.subscribe(twistTopic_, 1, &Rover5::twistCallback, this);
 
 		// Advertise left and right motor controls
 		leftMotor_ = nh_.advertise<std_msgs::Int16>(leftMotorTopic_, 5);
@@ -68,7 +68,7 @@ public:
 
 	}
 
-	~Bot2020() {
+	~Rover5() {
 		stopMotors();
 	}
 
@@ -92,11 +92,8 @@ public:
 
 		// Twist units are m/s and rad/s
 		// need to convert to left and right PWM values
-		// give the known geometry of the robot
+		// given the known geometry of the robot
 		// and the motor characteristics
-		//
-		// This is a simple robot with not speed feedback
-		// so anything we generate here is just a best guess
 		//
 		// hints here: http://moorerobots.com/blog/post/4
 
@@ -157,9 +154,9 @@ public:
 
 
 int main(int argc, char** argv) {
-	ros::init(argc, argv, "Bot2020");
+	ros::init(argc, argv, "Rover5");
 	ros::NodeHandle nh;
-	Bot2020 myBot(nh);
+	Rover5 myBot(nh);
 
 	myBot.stopMotors();
 	ros::spin();
