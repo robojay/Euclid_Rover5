@@ -1,0 +1,8 @@
+<launch>
+
+<!-- Starting Bot2020 node -->
+   <rosparam file="$(find bot2020_pkg)/config/rover5.yaml" command="load"/>
+
+   <node name="bot2020" pkg="bot2020_pkg" type="bot2020_node" output="screen" />
+
+</launch>
