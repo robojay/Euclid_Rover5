@@ -40,37 +40,34 @@ void setIsReady(bool status){
   isReady = status;
 }    
 
-void setMotor(uint8_t wheel, int16_t pwm) {
-  int16_t p;
+void setMotor(uint8_t wheel, const std_msgs::Int16& msg) {
   
-  if (pwm != motor[wheel].pwm) {
-    motor[wheel].pwm = pwm;
-    if (pwm > 0) {
-      p = min(pwm, 255);
-      analogWrite(PwmPin[wheel], p);
-      digitalWrite(DirPin[wheel], motor[wheel].forward);
-    }
-    else {
-      p = min(-pwm, 255);
-      analogWrite(PwmPin[wheel], p);
-      digitalWrite(DirPin[wheel], motor[wheel].reverse);
-    }
+  WheelState w;
+  
+  gotMessage = true;
+  motor[wheel].setpoint = (double)(abs(msg.data));
+  if (msg.data > 0) {
+    w = Forward;  
   }
+  else if (msg.data < 0) {
+    w = Reverse;
+  }
+  else {
+    w = Off;
+  }
+  motor[wheel].state = w;
 }
-  
+
 
 void setLeft( const std_msgs::Int16& msg) {  
-  gotMessage = true;
-  setMotor(LeftFront, msg.data);
-  setMotor(LeftRear, msg.data);
+  setMotor(LeftFront, msg);
+  setMotor(LeftRear, msg);
 }
 
 void setRight( const std_msgs::Int16& msg) {  
-  gotMessage = true;
-  setMotor(RightFront, msg.data);
-  setMotor(RightRear, msg.data);
+  setMotor(RightFront, msg);
+  setMotor(RightRear, msg);
 }
-
 
 void stopMotors() {
   for (uint8_t i = 0; i < 4; i++) {
@@ -78,6 +75,59 @@ void stopMotors() {
   }
 }
 
+void registerArduino(bool amReady){
+    arduinoRegisterMessage.data = amReady;
+    mArduinoStatusPub.publish(&arduinoRegisterMessage);
+}
+
+void sendEncoders(){
+    mLeftRearCount.publish(&countMessage[LeftRear]);
+    mRightRearCount.publish(&countMessage[RightRear]);
+    mLeftFrontCount.publish(&countMessage[LeftFront]);
+    mRightFrontCount.publish(&countMessage[RightFront]);
+}
+
+void handleEncoders() {
+  static int32_t c[4];
+
+  // doing these is separate steps to minimize delay skews
+  // between channels
+  
+  for (uint8_t i = 0; i < 4; i++) {
+    c[i] = encoder[i].count;
+  }
+
+  for (uint8_t i = 0; i < 4; i++) {
+    countMessage[i].data = c[i];      
+    encoder[i].dCount = (double)(abs(c[i] - encoder[i].lastCount));
+    encoder[i].lastCount = c[i];
+  }  
+
+}
+
+void handleMotor(uint8_t wheel) {
+  int16_t p;
+
+  p = (int16_t)(motor[wheel].pwm);
+  p = min(p, 255);
+  analogWrite(PwmPin[wheel], p);
+  
+  if (motor[wheel].state ==  Forward) {
+    digitalWrite(DirPin[wheel], motor[wheel].forward);
+  }
+  else if (motor[wheel].state == Reverse) {
+    digitalWrite(DirPin[wheel], motor[wheel].reverse);
+  }
+  else {
+    analogWrite(PwmPin[wheel], 0);      
+  }
+}
+  
+void handleMotors() {
+  for (uint8_t i = 0; i < 4; i++) {
+    handleMotor(i);
+  }  
+}
 
 void setup() {
 
@@ -100,6 +150,8 @@ void setup() {
     motor[i].pwm = 0.0;  
 
     pid[i].Setup(&encoder[i].dCount, &motor[i].pwm, &motor[i].setpoint, Kp, Ki, Kd, DIRECT);
+    pid[i].SetSampleTime(UpdateTime);
+    pid[i].SetOutputLimits(0, 255);
   
   }
 
@@ -134,6 +186,8 @@ void setup() {
   nh.advertise(mRightRearCount);
   nh.advertise(mRightFrontCount);
 
+  nh.advertise(mDebug);
+
   //Subscribe topics
   nh.subscribe(sSetLeft);
   nh.subscribe(sSetRight);
@@ -146,40 +200,49 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(EncAPin[RightRear]), rightRearInterrupt, RISING);
   attachInterrupt(digitalPinToInterrupt(EncAPin[RightFront]), rightFrontInterrupt, RISING);
 
+
+  for (uint8_t i = 0; i < 4; i++) {
+    pid[i].SetMode(AUTOMATIC);
+  }
+  
   setIsReady(true);
 
-}
-
-void registerArduino(bool amReady){
-    arduinoRegisterMessage.data = amReady;
-    mArduinoStatusPub.publish(&arduinoRegisterMessage);
-}
-
-void sendEncoders(){
-    for (uint8_t i = 0; i < 4; i++) {
-      countMessage[i].data = encoder[i].count;      
-      encoder[i].dCount = (double)encoder[i].count;
-    }
-    mLeftRearCount.publish(&countMessage[LeftRear]);
-    mRightRearCount.publish(&countMessage[RightRear]);
-    mLeftFrontCount.publish(&countMessage[LeftFront]);
-    mRightFrontCount.publish(&countMessage[RightFront]);
 }
 
 
 void loop() {
   static unsigned long readyTimer = 0;
-  static unsigned long messageTimer = 0;
-  static unsigned long sensorMessageTimer = 0;
+  static unsigned long rosTimer = 0;
+  static unsigned long updateTimer = 0;
   static bool ledState = false;
   unsigned long now;
+  boolean doMotors = false;
 
   now = millis();
+
+  if (now >= updateTimer) {
+    handleEncoders();
+    sendEncoders();
+    updateTimer = now + UpdateTime;
+  }
+
+  for (uint8_t i = 0; i < 4; i++) {
+    if (pid[i].Compute()) {
+      doMotors = true;
+    }
+  }
+
+  if (doMotors) {
+    handleMotors();
+    //debug.data = (uint32_t)encoder[LeftFront].dCount;
+    debug.data = (uint32_t)motor[LeftFront].pwm;
+    mDebug.publish(&debug);
+  }
+
     
   //Register the arduino in ROS and wait for the system to be ready.
   if (now >= readyTimer) {
     registerArduino(isReady);
-    readyTimer = now + 1000;
     ledState = !ledState;
     if (ledState) {
       digitalWrite(LED_BUILTIN, HIGH);
@@ -187,22 +250,19 @@ void loop() {
     else {
       digitalWrite(LED_BUILTIN, LOW);      
     }
+    readyTimer = now + StatusTime;
   }
 
-  if (now >= messageTimer) {
+  if (now >= rosTimer) {
     if (gotMessage) {
       gotMessage = false;
     }
     else {
       stopMotors();
     }
-    messageTimer = now + 5000;
+    rosTimer = now + RosTime;
   }
 
-  if (now >= sensorMessageTimer) {
-    sendEncoders();
-    sensorMessageTimer = now + SensorUpdateTime;
-  }
 
   nh.spinOnce();  //Allows ROS to run and to send/receive new messages.
 

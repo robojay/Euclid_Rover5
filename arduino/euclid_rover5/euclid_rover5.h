@@ -10,16 +10,19 @@ const uint8_t DirPin[4] = {5, 7, 9, 11};
 const uint8_t EncAPin[4] = {2, 3, 18, 19};
 const uint8_t EncBPin[4] = {22, 23, 24, 25};
 
-const uint8_t SensorUpdateFrequency = 50; // Hertz 
-const uint32_t SensorUpdateTime = 1000 / SensorUpdateFrequency; // milliseconds
+const uint8_t UpdateFrequency = 10; // Hertz 
+const uint32_t UpdateTime = 1000 / UpdateFrequency; // milliseconds
+const uint32_t RosTime = 5000;
+const uint32_t StatusTime = 1000;
 
-const double Kp = 1.0;
-const double Ki = 0.0;
+const double Kp = 6.0;
+const double Ki = 0.5;
 const double Kd = 0.0;
 
 struct Encoder {
   volatile WheelState state;
   volatile int32_t count;
+  int32_t lastCount;
   double dCount;
   uint8_t forward;
 };
@@ -64,6 +67,10 @@ ros::Publisher mLeftRearDt("/rover5/left/rear/dt", &dtMessage[LeftRear]);
 ros::Publisher mLeftFrontDt("/rover5/left/front/dt", &dtMessage[LeftFront]);
 ros::Publisher mRightRearDt("/rover5/right/rear/dt", &dtMessage[RightRear]);
 ros::Publisher mRightFrontDt("/rover5/right/front/dt", &dtMessage[RightFront]);
+
+std_msgs::UInt32 debug;
+ros::Publisher mDebug("/rover5/debug", &debug);
+
 
 void setLeft( const std_msgs::Int16& msg);
 void setRight( const std_msgs::Int16& msg);
