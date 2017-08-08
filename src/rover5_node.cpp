@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/Int16.h>
+#include <std_msgs/UInt32.h>
 #include <math.h>
 
 using namespace std;
@@ -9,17 +10,19 @@ class Rover5 {
 	ros::NodeHandle nh_;
 
 	ros::Subscriber robotTwist_;
+	ros::Subscriber updateTime_;
 
 	ros::Publisher leftMotor_;
 	ros::Publisher rightMotor_;
 
-	string twistTopic_, leftMotorTopic_, rightMotorTopic_;
-	float leftRpmMax_;
-	float rightRpmMax_;
-	float leftWheelDiameterMm_;
-	float rightWheelDiameterMm_;
+	string twistTopic_, leftMotorTopic_, rightMotorTopic_, updateTimeTopic_;
+	float wheelDiameterMm_;
 	float wheelSpacingMm_;
-	int pwmLimit_;	
+	float countsPerRotation_;
+	float maxSpeedMetersPerSecond_;
+
+	int pwmLimit_;
+	uint32_t updateTimeMilliseconds_; 	
 	
 	static const float PI = 3.1415927;
 
@@ -31,12 +34,10 @@ public:
 		twistTopic_ = "/rover5/cmd_vel";
 		leftMotorTopic_ = "/rover5/left_motor";
 		rightMotorTopic_ = "/rover5/right_motor";
-		leftRpmMax_ = 90.0;
-		rightRpmMax_ = 90.0;
-		leftWheelDiameterMm_ = 65.0;
-		rightWheelDiameterMm_ = 65.0;
-		wheelSpacingMm_ = 105.0;
-		pwmLimit_ = 255; 	
+		wheelDiameterMm_ = 60.0;
+		wheelSpacingMm_ = 189.0;
+		countsPerRotation_ = 83.3;
+		maxSpeedMetersPerSecond_ = 0.25;
 
 
   		// Load parameters from bot2020.yaml
@@ -45,12 +46,11 @@ public:
 			nh.getParam("twist_topic", twistTopic_);
 			nh.getParam("left_motor_topic", leftMotorTopic_);
 			nh.getParam("right_motor_topic", rightMotorTopic_);
-			nh.getParam("left_rpm_max", leftRpmMax_);
-			nh.getParam("right_rpm_max", rightRpmMax_);
-			nh.getParam("left_wheel_diameter_mm", leftWheelDiameterMm_);
-			nh.getParam("right_wheel_diameter_mm", rightWheelDiameterMm_);
+			nh.getParam("update_time_topic", updateTimeTopic_);
+			nh.getParam("wheel_diameter_mm", wheelDiameterMm_);
 			nh.getParam("wheel_spacing_mm", wheelSpacingMm_);
-			nh.getParam("pwm_limit", pwmLimit_); 	
+			nh.getParam("counts_per_rotation", countsPerRotation_); 	
+			nh.getParam("max_speed_m_per_s", maxSpeedMetersPerSecond_); 	
 
 			ROS_INFO("Parameters loaded");
 		}
@@ -59,8 +59,14 @@ public:
    			ROS_WARN("Parameters not loaded, using defaults");
 		}
 
-		// Subscribe to bot2020 twist
+		// Subscribe to twist
 		robotTwist_ = nh_.subscribe(twistTopic_, 1, &Rover5::twistCallback, this);
+
+		// Subsribe to update time (milliseconds per encoder count sample)
+		updateTime_ = nh_.subscribe(updateTimeTopic_, 1, &Rover5::updateTimeCallback, this);
+
+		updateTimeMilliseconds_ = 0;
+
 
 		// Advertise left and right motor controls
 		leftMotor_ = nh_.advertise<std_msgs::Int16>(leftMotorTopic_, 5);
@@ -84,6 +90,15 @@ public:
 		rightMotor_.publish(right);
 	}
 
+	void updateTimeCallback(const std_msgs::UInt32& utime) {
+		ROS_INFO("updateTimeCallback");
+
+		updateTimeMilliseconds_ = utime.data;
+
+		ROS_INFO("Update Time = %d", updateTimeMilliseconds_);
+	}
+
+
 	void twistCallback(const geometry_msgs::Twist& twist) {
 		ROS_INFO("twistCallback");
 
@@ -106,35 +121,33 @@ public:
 		vr = ((2.0 * vc) + (wc * wheelSpacingMm_) / 1000.0) / 2.0;
 		vl = ((2.0 * vc) - (wc * wheelSpacingMm_) / 1000.0) / 2.0;
 
+		// clamp to limits
+
+		if (vr > maxSpeedMetersPerSecond_) {
+			vr = maxSpeedMetersPerSecond_;
+		}
+		else if (vr < -maxSpeedMetersPerSecond_) {
+			vr = -maxSpeedMetersPerSecond_;
+		}
+
+		if (vl > maxSpeedMetersPerSecond_) {
+			vl = maxSpeedMetersPerSecond_;
+		}
+		else if (vl < -maxSpeedMetersPerSecond_) {
+			vl = -maxSpeedMetersPerSecond_;
+		}
+
+
 		ROS_INFO("Velocity Left = %f", vl);
 		ROS_INFO("Velocity Right = %f", vr);
 
-		float pwmLeft, pwmRight;
-
-		pwmLeft = round((vl * pwmLimit_ * 1000.0 * 60.0) / (leftRpmMax_ * leftWheelDiameterMm_ * PI));
-		pwmRight = round((vr * pwmLimit_ * 1000.0 * 60.0) / (rightRpmMax_ * rightWheelDiameterMm_ * PI));
-
-		ROS_INFO("PWM Left = %f", pwmLeft);
-		ROS_INFO("PWM Right = %f", pwmRight);
+		// convert velocity to counts per update time
+		// speed = ((wheel diamater * pi) / (counts per rev)) * (counts / time)
+		// taking care of units, we get...
 
 		int cmdLeft, cmdRight;
-
-		// clamp to the limit
-
-		if (pwmLeft >= 0.0) {
-			cmdLeft = std::min(int(pwmLeft), pwmLimit_);
-		}
-		else {
-			cmdLeft = std::max(int(pwmLeft), -pwmLimit_);
-		}
-
-
-		if (pwmRight >= 0.0) {
-			cmdRight = std::min(int(pwmRight), pwmLimit_);
-		}
-		else {
-			cmdRight = std::max(int(pwmRight), -pwmLimit_);
-		}
+		cmdLeft = (vl * updateTimeMilliseconds_ * countsPerRotation_) / (wheelDiameterMm_ * PI); 
+		cmdRight = (vr * updateTimeMilliseconds_ * countsPerRotation_) / (wheelDiameterMm_ * PI); 
 
 		ROS_INFO("Command Left = %d", cmdLeft);
 		ROS_INFO("Command Right = %d", cmdRight);
@@ -145,7 +158,6 @@ public:
 		right.data = cmdRight;
 		leftMotor_.publish(left);
 		rightMotor_.publish(right);
-
 		
 	}
 

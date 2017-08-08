@@ -81,6 +81,7 @@ void registerArduino(bool amReady){
 }
 
 void sendEncoders(){
+    mUpdateTime.publish(&updateTime);
     mLeftRearCount.publish(&countMessage[LeftRear]);
     mRightRearCount.publish(&countMessage[RightRear]);
     mLeftFrontCount.publish(&countMessage[LeftFront]);
@@ -149,6 +150,8 @@ void setup() {
     motor[i].setpoint = 0;
     motor[i].pwm = 0.0;  
 
+    updateTime.data = UpdateTime;
+
     pid[i].Setup(&encoder[i].dCount, &motor[i].pwm, &motor[i].setpoint, Kp, Ki, Kd, DIRECT);
     pid[i].SetSampleTime(UpdateTime);
     pid[i].SetOutputLimits(0, 255);
@@ -185,6 +188,7 @@ void setup() {
   nh.advertise(mLeftFrontCount);
   nh.advertise(mRightRearCount);
   nh.advertise(mRightFrontCount);
+  nh.advertise(mUpdateTime);
 
   nh.advertise(mDebug);
 

@@ -61,12 +61,9 @@ ros::Publisher mLeftFrontCount("/rover5/left/front/count", &countMessage[LeftFro
 ros::Publisher mRightRearCount("/rover5/right/rear/count", &countMessage[RightRear]);
 ros::Publisher mRightFrontCount("/rover5/right/front/count", &countMessage[RightFront]);
 
-std_msgs::UInt32 dtMessage[4];
+std_msgs::UInt32 updateTime;;
 
-ros::Publisher mLeftRearDt("/rover5/left/rear/dt", &dtMessage[LeftRear]);
-ros::Publisher mLeftFrontDt("/rover5/left/front/dt", &dtMessage[LeftFront]);
-ros::Publisher mRightRearDt("/rover5/right/rear/dt", &dtMessage[RightRear]);
-ros::Publisher mRightFrontDt("/rover5/right/front/dt", &dtMessage[RightFront]);
+ros::Publisher mUpdateTime("/rover5/update_time", &updateTime);
 
 std_msgs::UInt32 debug;
 ros::Publisher mDebug("/rover5/debug", &debug);
