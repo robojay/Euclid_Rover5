@@ -6,3 +6,5 @@
     wheel_spacing_mm: 189.0
     counts_per_rotation: 83.3
     max_speed_m_per_s: 0.25
+    debug_level: 0
+
