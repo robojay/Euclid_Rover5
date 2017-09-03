@@ -25,6 +25,9 @@ class Rover5 {
 	uint32_t updateTimeMilliseconds_; 	
 	
 	static const float PI = 3.1415927;
+	int debugLevel_ ;
+
+
 
 public:
 	Rover5(ros::NodeHandle &nh) {
@@ -38,6 +41,7 @@ public:
 		wheelSpacingMm_ = 189.0;
 		countsPerRotation_ = 83.3;
 		maxSpeedMetersPerSecond_ = 0.25;
+		debugLevel_ = 0;
 
 
   		// Load parameters from bot2020.yaml
@@ -51,6 +55,7 @@ public:
 			nh.getParam("wheel_spacing_mm", wheelSpacingMm_);
 			nh.getParam("counts_per_rotation", countsPerRotation_); 	
 			nh.getParam("max_speed_m_per_s", maxSpeedMetersPerSecond_); 	
+			nh.getParam("debug_level", debugLevel_);
 
 			ROS_INFO("Parameters loaded");
 		}
@@ -78,11 +83,12 @@ public:
 		stopMotors();
 	}
 
+
 	void stopMotors() {
 		std_msgs::Int16 left, right;
 
 		// turn off the motors and make sure to send message
-		ROS_INFO("Stopping motors");
+		if (debugLevel_ > 0) ROS_INFO("Stopping motors");
 
 		left.data = 0;
 		right.data = 0;
@@ -91,19 +97,19 @@ public:
 	}
 
 	void updateTimeCallback(const std_msgs::UInt32& utime) {
-		ROS_INFO("updateTimeCallback");
+		if (debugLevel_ > 0) ROS_INFO("updateTimeCallback");
 
 		updateTimeMilliseconds_ = utime.data;
 
-		ROS_INFO("Update Time = %d", updateTimeMilliseconds_);
+		if (debugLevel_ > 0) ROS_INFO("Update Time = %d", updateTimeMilliseconds_);
 	}
 
 
 	void twistCallback(const geometry_msgs::Twist& twist) {
-		ROS_INFO("twistCallback");
+		if (debugLevel_ > 0) ROS_INFO("twistCallback");
 
-		ROS_INFO("linear x = %f", twist.linear.x);
-		ROS_INFO("angular z = %f", twist.angular.z);
+		if (debugLevel_ > 0) ROS_INFO("linear x = %f", twist.linear.x);
+		if (debugLevel_ > 0) ROS_INFO("angular z = %f", twist.angular.z);
 
 		// Twist units are m/s and rad/s
 		// need to convert to left and right PWM values
@@ -138,8 +144,8 @@ public:
 		}
 
 
-		ROS_INFO("Velocity Left = %f", vl);
-		ROS_INFO("Velocity Right = %f", vr);
+		if (debugLevel_ > 0) ROS_INFO("Velocity Left = %f", vl);
+		if (debugLevel_ > 0) ROS_INFO("Velocity Right = %f", vr);
 
 		// convert velocity to counts per update time
 		// speed = ((wheel diamater * pi) / (counts per rev)) * (counts / time)
@@ -149,8 +155,8 @@ public:
 		cmdLeft = (vl * updateTimeMilliseconds_ * countsPerRotation_) / (wheelDiameterMm_ * PI); 
 		cmdRight = (vr * updateTimeMilliseconds_ * countsPerRotation_) / (wheelDiameterMm_ * PI); 
 
-		ROS_INFO("Command Left = %d", cmdLeft);
-		ROS_INFO("Command Right = %d", cmdRight);
+		if (debugLevel_ > 0) ROS_INFO("Command Left = %d", cmdLeft);
+		if (debugLevel_ > 0) ROS_INFO("Command Right = %d", cmdRight);
 
 		std_msgs::Int16 left, right;
 
@@ -168,9 +174,11 @@ public:
 int main(int argc, char** argv) {
 	ros::init(argc, argv, "Rover5");
 	ros::NodeHandle nh;
+
 	Rover5 myBot(nh);
 
 	myBot.stopMotors();
+
 	ros::spin();
 
 	return 0;

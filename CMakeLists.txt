@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   message_generation
+  tf
 )
 
 find_package(Boost REQUIRED COMPONENTS system)
@@ -21,7 +22,7 @@ find_package(Boost REQUIRED COMPONENTS system)
  )
 
 catkin_package(
-  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime 
+  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
 )
 
 include_directories(
