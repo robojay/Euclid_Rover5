@@ -4,6 +4,8 @@
 #include <std_msgs/Int16.h>
 #include <std_msgs/Bool.h>
 #include <PID_v1.h>
+#include <euclid_rover5_pkg/Encoder.h>
+
 #include "euclid_rover5.h"
 
 // Wrappers for encoder interrupt handler
@@ -82,10 +84,7 @@ void registerArduino(bool amReady){
 
 void sendEncoders(){
     mUpdateTime.publish(&updateTime);
-    mLeftRearCount.publish(&countMessage[LeftRear]);
-    mRightRearCount.publish(&countMessage[RightRear]);
-    mLeftFrontCount.publish(&countMessage[LeftFront]);
-    mRightFrontCount.publish(&countMessage[RightFront]);
+    mEncoderCount.publish(&encoderMessage);
 }
 
 void handleEncoders() {
@@ -98,8 +97,11 @@ void handleEncoders() {
     c[i] = encoder[i].count;
   }
 
+  // timestamp the encoder readings
+  encoderMessage.header.stamp = nh.now();
+
   for (uint8_t i = 0; i < 4; i++) {
-    countMessage[i].data = c[i];      
+    encoderMessage.count[i] = c[i];      
     encoder[i].dCount = (double)(abs(c[i] - encoder[i].lastCount));
     encoder[i].lastCount = c[i];
   }  
@@ -184,10 +186,7 @@ void setup() {
 
   //Advertise topics
   nh.advertise(mArduinoStatusPub);
-  nh.advertise(mLeftRearCount);
-  nh.advertise(mLeftFrontCount);
-  nh.advertise(mRightRearCount);
-  nh.advertise(mRightFrontCount);
+  nh.advertise(mEncoderCount);
   nh.advertise(mUpdateTime);
 
   nh.advertise(mDebug);

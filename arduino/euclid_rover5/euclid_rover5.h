@@ -54,12 +54,9 @@ bool isReady = false;
 std_msgs::Bool arduinoRegisterMessage;
 ros::Publisher mArduinoStatusPub("/rover5/ready", &arduinoRegisterMessage);
 
-std_msgs::Int32 countMessage[4];
+euclid_rover5_pkg::Encoder encoderMessage;
 
-ros::Publisher mLeftRearCount("/rover5/left/rear/count", &countMessage[LeftRear]);
-ros::Publisher mLeftFrontCount("/rover5/left/front/count", &countMessage[LeftFront]);
-ros::Publisher mRightRearCount("/rover5/right/rear/count", &countMessage[RightRear]);
-ros::Publisher mRightFrontCount("/rover5/right/front/count", &countMessage[RightFront]);
+ros::Publisher mEncoderCount("/rover5/encoder", &encoderMessage);
 
 std_msgs::UInt32 updateTime;;
 

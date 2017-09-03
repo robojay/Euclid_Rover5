@@ -12,6 +12,10 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Boost REQUIRED COMPONENTS system)
 
+add_message_files(
+   FILES
+   Encoder.msg
+)
 
 
 ## Generate added messages and services with any dependencies listed here
@@ -20,6 +24,7 @@ find_package(Boost REQUIRED COMPONENTS system)
    std_msgs
    geometry_msgs  
  )
+
 
 catkin_package(
   CATKIN_DEPENDS roscpp rospy std_msgs message_runtime

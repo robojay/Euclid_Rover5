@@ -2,6 +2,10 @@
     left_motor_topic: "/rover5/left_motor"
     right_motor_topic: "/rover5/right_motor"
     update_time_topic: "/rover5/update_time"
+    encoder_topic: "/rover5/encoder"
+    odom_topic: "odom"
+    odom_frame_id: "odom"
+    base_frame_id: "base_link"
     wheel_diameter_mm: 60.0
     wheel_spacing_mm: 189.0
     counts_per_rotation: 83.3
